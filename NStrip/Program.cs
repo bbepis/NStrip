@@ -114,7 +114,7 @@ namespace NStrip
 		{
 			return Path.Combine(
 				Path.GetDirectoryName(path),
-				$"{Path.GetFileNameWithoutExtension(path)}{appendedString}.{Path.GetExtension(path)}"
+				$"{Path.GetFileNameWithoutExtension(path)}{appendedString}{Path.GetExtension(path)}"
 			);
 		}
 
