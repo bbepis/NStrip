@@ -84,7 +84,7 @@ namespace NStrip
 			}
 		}
 
-		public static void StripAssembly(AssemblyDefinition assembly, StripType stripType)
+		public static void StripAssembly(AssemblyDefinition assembly, StripType stripType, bool keepResources)
 		{
 			if (!assembly.MainModule.TryGetTypeReference("System.Void", out var voidTypeReference))
 			{
@@ -99,7 +99,8 @@ namespace NStrip
 				ClearMethodBodies(voidTypeReference, type.Methods, stripType);
 			}
 
-			assembly.MainModule.Resources.Clear();
+			if (!keepResources)
+				assembly.MainModule.Resources.Clear();
 		}
 
 		public static void MakePublic(AssemblyDefinition assembly, IList<string> typeNameBlacklist)

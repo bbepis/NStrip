@@ -63,7 +63,7 @@ namespace NStrip
 						fileOutputPath = AppendToEndOfFileName(file, "-nstrip");
 
 					StripAssembly(file, fileOutputPath, arguments.NoStrip, arguments.Public,
-						arguments.StripType,arguments.Blacklist, readerParams);
+						arguments.KeepResources, arguments.StripType,arguments.Blacklist, readerParams);
 				}
 			}
 			else if (File.Exists(path))
@@ -74,7 +74,7 @@ namespace NStrip
 				                        (arguments.Overwrite ? path : AppendToEndOfFileName(path, "-nstrip"));
 
 				StripAssembly(path, fileOutputPath, arguments.NoStrip, arguments.Public,
-					arguments.StripType, arguments.Blacklist, readerParams);
+					arguments.KeepResources, arguments.StripType, arguments.Blacklist, readerParams);
 			}
 			else
 			{
@@ -84,14 +84,14 @@ namespace NStrip
 			LogMessage("Finished!");
 		}
 
-		static void StripAssembly(string assemblyPath, string outputPath, bool noStrip, bool makePublic, StripType stripType, IList<string> typeNameBlacklist, ReaderParameters readerParams)
+		static void StripAssembly(string assemblyPath, string outputPath, bool noStrip, bool makePublic, bool keepResources, StripType stripType, IList<string> typeNameBlacklist, ReaderParameters readerParams)
 		{
 			LogMessage($"Stripping {assemblyPath}");
 			using var memoryStream = new MemoryStream(File.ReadAllBytes(assemblyPath));
 			using var assemblyDefinition = AssemblyDefinition.ReadAssembly(memoryStream, readerParams);
 
 			if (!noStrip)
-				AssemblyStripper.StripAssembly(assemblyDefinition, stripType);
+				AssemblyStripper.StripAssembly(assemblyDefinition, stripType, keepResources);
 
 			if (makePublic)
 				AssemblyStripper.MakePublic(assemblyDefinition, typeNameBlacklist);
@@ -141,6 +141,9 @@ namespace NStrip
 
             [CommandDefinition("o", "overwrite", Description = "Instead of appending \"-nstrip\" to the output assembly name, overwrite the file in-place. Does nothing if an output file/directory is specified, as \"-nstrip\" is not appended in the first place.")]
             public bool Overwrite { get; set; }
+
+            [CommandDefinition("keep-resources", Description = "Keeps manifest resources intact instead of removing them when stripping.")]
+            public bool KeepResources { get; set; }
 
             [CommandDefinition("t", "strip-type", Description = "The type of stripping to perform.\n\nValueRet: Returns a dummy value and ret opcode. Largest but runtime-safe. Default.\nOnlyRet: Only adds a ret opcode. Slightly smaller than ValueRet but may not be runtime-safe.\nEmptyBody: No opcodes in body. Slightly smaller again but is not runtime-safe.\nThrowNull: Makes all methods throw null. Runtime-safe and is the MS standard.\nExtern: Marks all methods as extern, and removes their bodies. Smallest size, but not runtime-safe and might not be compile-time safe.")]
             public StripType StripType { get; set; }
