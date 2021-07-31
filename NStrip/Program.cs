@@ -25,11 +25,11 @@ namespace NStrip
 
 		static void Main(string[] args)
 		{
-            NRedirectArguments arguments = Arguments.Parse<NRedirectArguments>(args);
+            NStripArguments arguments = Arguments.Parse<NStripArguments>(args);
 
 			if (arguments.Values.Count == 0 || arguments.Help)
 			{
-				LogMessage(Arguments.PrintLongHelp<NRedirectArguments>(
+				LogMessage(Arguments.PrintLongHelp<NStripArguments>(
 					"NStrip v1.1, by Bepis",
 					"Usage: NStrip [options] (<.NET .exe / .dll> | <directory>) [<output assembly> | <output directory>]"));
 				return;
@@ -120,7 +120,7 @@ namespace NStrip
 			);
 		}
 
-        private class NRedirectArguments : IArgumentCollection
+        private class NStripArguments : IArgumentCollection
         {
             public IList<string> Values { get; set; }
 			
