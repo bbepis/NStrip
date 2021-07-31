@@ -122,7 +122,7 @@ namespace NStrip
         {
             public IList<string> Values { get; set; }
 			
-            [CommandDefinition("h", "help", Description = "Prints help text")]
+            [CommandDefinition("h", "help", Description = "Prints help text", Order = 1)]
             public bool Help { get; set; }
 
             [CommandDefinition("p", "public", Description = "Changes visibility of all types, nested types, methods and fields to public.")]
