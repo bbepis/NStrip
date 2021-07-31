@@ -30,7 +30,7 @@ namespace NStrip
 			if (arguments.Values.Count == 0 || arguments.Help)
 			{
 				LogMessage(Arguments.PrintLongHelp<NRedirectArguments>(
-					"NStrip v1.0.0, by Bepis",
+					"NStrip v1.1, by Bepis",
 					"Usage: NStrip [options] (<.NET .exe / .dll> | <directory>) [<output assembly> | <output directory>]"));
 				return;
 			}
