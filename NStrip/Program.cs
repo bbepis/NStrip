@@ -62,7 +62,8 @@ namespace NStrip
 					if (!arguments.Overwrite && outputPath == null)
 						fileOutputPath = AppendToEndOfFileName(file, "-nstrip");
 
-					StripAssembly(file, fileOutputPath, arguments.NoStrip, arguments.Public, arguments.Blacklist, readerParams);
+					StripAssembly(file, fileOutputPath, arguments.NoStrip, arguments.Public,
+						arguments.StripType,arguments.Blacklist, readerParams);
 				}
 			}
 			else if (File.Exists(path))
@@ -72,7 +73,8 @@ namespace NStrip
 				string fileOutputPath = outputPath ??
 				                        (arguments.Overwrite ? path : AppendToEndOfFileName(path, "-nstrip"));
 
-				StripAssembly(path, fileOutputPath, arguments.NoStrip, arguments.Public, arguments.Blacklist, readerParams);
+				StripAssembly(path, fileOutputPath, arguments.NoStrip, arguments.Public,
+					arguments.StripType, arguments.Blacklist, readerParams);
 			}
 			else
 			{
@@ -82,14 +84,14 @@ namespace NStrip
 			LogMessage("Finished!");
 		}
 
-		static void StripAssembly(string assemblyPath, string outputPath, bool noStrip, bool makePublic, IList<string> typeNameBlacklist, ReaderParameters readerParams)
+		static void StripAssembly(string assemblyPath, string outputPath, bool noStrip, bool makePublic, StripType stripType, IList<string> typeNameBlacklist, ReaderParameters readerParams)
 		{
 			LogMessage($"Stripping {assemblyPath}");
 			using var memoryStream = new MemoryStream(File.ReadAllBytes(assemblyPath));
 			using var assemblyDefinition = AssemblyDefinition.ReadAssembly(memoryStream, readerParams);
 
 			if (!noStrip)
-				AssemblyStripper.StripAssembly(assemblyDefinition);
+				AssemblyStripper.StripAssembly(assemblyDefinition, stripType);
 
 			if (makePublic)
 				AssemblyStripper.MakePublic(assemblyDefinition, typeNameBlacklist);
@@ -134,11 +136,14 @@ namespace NStrip
             [CommandDefinition("b", "blacklist", Description = "Specify this to blacklist specific short type names from being publicized if you're encountering issues with types conflicting. Can be specified multiple times.")]
             public IList<string> Blacklist { get; set; }
 
-            [CommandDefinition("n", "no-strip", Description = "Does not strip assemblies. If this is not being used with --public, assemblies are not modified/saved")]
+            [CommandDefinition("n", "no-strip", Description = "Does not strip assemblies. If this is not being used with --public, assemblies are not modified/saved.")]
             public bool NoStrip { get; set; }
 
             [CommandDefinition("o", "overwrite", Description = "Instead of appending \"-nstrip\" to the output assembly name, overwrite the file in-place. Does nothing if an output file/directory is specified, as \"-nstrip\" is not appended in the first place.")]
             public bool Overwrite { get; set; }
+
+            [CommandDefinition("t", "strip-type", Description = "The type of stripping to perform.\n\nValueRet: Returns a dummy value and ret opcode. Largest but runtime-safe. Default.\nOnlyRet: Only adds a ret opcode. Slightly smaller than ValueRet but may not be runtime-safe.\nEmptyBody: No opcodes in body. Slightly smaller again but is not runtime-safe.\nThrowNull: Makes all methods throw null. Runtime-safe and is the MS standard.\nExtern: Marks all methods as extern, and removes their bodies. Smallest size, but not runtime-safe and might not be compile-time safe.")]
+            public StripType StripType { get; set; }
 		}
 	}
 }

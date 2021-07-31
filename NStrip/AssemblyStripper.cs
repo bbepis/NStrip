@@ -4,6 +4,15 @@ using Mono.Cecil.Cil;
 
 namespace NStrip
 {
+	public enum StripType
+	{
+		ThrowNull,
+		ValueRet,
+		OnlyRet,
+		EmptyBody,
+		Extern
+	}
+
 	public static class AssemblyStripper
 	{
 		static IEnumerable<TypeDefinition> GetAllTypeDefinitions(AssemblyDefinition assembly)
@@ -21,41 +30,61 @@ namespace NStrip
 			}
 		}
 
-		static void ClearMethodBodies(TypeReference voidTypeReference, ICollection<MethodDefinition> methods)
+		static void ClearMethodBodies(TypeReference voidTypeReference, ICollection<MethodDefinition> methods, StripType stripType)
 		{
 			foreach (MethodDefinition method in methods)
 			{
 				if (!method.HasBody)
 					continue;
 
-				MethodBody body = new MethodBody(method);
-				var il = body.GetILProcessor();
-				
-				// There's multiple ways we could handle this:
-				// - Only provide a ret. Smallest size, however if .NET tries to load this assembly during runtime it might fail.
-				// - Providing a value and ret (what we currently do). Slightly more space, however .NET should be fine loading it.
-				// - Null body, i.e. mark everything as extern. Should theoretically work when loaded into .NET and be the smallest size,
-				// but the size of assembly remains the same. Might be a bug within Mono.Cecil.
-
-				if (method.ReturnType.IsPrimitive)
+				if (stripType == StripType.Extern)
 				{
-					il.Emit(OpCodes.Ldc_I4_0);
+					method.Body = null;
+					method.IsRuntime = true;
+					method.IsIL = false;
 				}
-				else if (method.ReturnType != voidTypeReference)
+				else
 				{
-					il.Emit(OpCodes.Ldnull);
+					MethodBody body = new MethodBody(method);
+					var il = body.GetILProcessor();
+
+					if (stripType == StripType.ValueRet)
+					{
+						if (method.ReturnType.IsPrimitive)
+						{
+							il.Emit(OpCodes.Ldc_I4_0);
+						}
+						else if (method.ReturnType != voidTypeReference)
+						{
+							il.Emit(OpCodes.Ldnull);
+						}
+
+						il.Emit(OpCodes.Ret);
+					}
+					else if (stripType == StripType.OnlyRet)
+					{
+						il.Emit(OpCodes.Ret);
+					}
+					else if (stripType == StripType.ThrowNull)
+					{
+						il.Emit(OpCodes.Ldnull);
+						il.Emit(OpCodes.Throw);
+					}
+					else if (stripType == StripType.EmptyBody)
+					{
+						il.Clear();
+					}
+
+					method.Body = body;
+
+					// Probably not necessary but just in case
+					method.AggressiveInlining = false;
+					method.NoInlining = true;
 				}
-
-				il.Emit(OpCodes.Ret);
-
-				method.Body = body;
-
-				method.AggressiveInlining = false;
-				method.NoInlining = true;
 			}
 		}
 
-		public static void StripAssembly(AssemblyDefinition assembly)
+		public static void StripAssembly(AssemblyDefinition assembly, StripType stripType)
 		{
 			if (!assembly.MainModule.TryGetTypeReference("System.Void", out var voidTypeReference))
 			{
@@ -67,7 +96,7 @@ namespace NStrip
 				if (type.IsEnum || type.IsInterface)
 					continue;
 
-				ClearMethodBodies(voidTypeReference, type.Methods);
+				ClearMethodBodies(voidTypeReference, type.Methods, stripType);
 			}
 
 			assembly.MainModule.Resources.Clear();
