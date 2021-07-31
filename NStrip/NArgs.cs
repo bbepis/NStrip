@@ -73,6 +73,16 @@ namespace NArgs
 						list.Add(x);
 					});
 				}
+				else if (typeof(Enum).IsAssignableFrom(kv.Value.PropertyType))
+				{
+					valueSwitches.Add(kv.Key, x =>
+					{
+						if (!TryParseEnum(kv.Value.PropertyType, x, true, out var value))
+							throw new ArgumentException("Invalid value for argument: " + x);
+
+						kv.Value.SetValue(config, value);
+					});
+				}
 			}
 
 			CommandDefinitionAttribute previousSwitchDefinition = null;
@@ -178,7 +188,12 @@ namespace NArgs
 			builder.AppendLine();
 			builder.AppendLine();
 
-			foreach (var command in commands.OrderBy(x => x.Key.ShortArg ?? "zzzz").ThenBy(x => x.Key.LongArg))
+			var orderedCommands = commands
+				.OrderByDescending(x => x.Key.Order)
+				.ThenBy(x => x.Key.ShortArg ?? "zzzz")
+				.ThenBy(x => x.Key.LongArg);
+
+			foreach (var command in orderedCommands)
 			{
 				var valueString = string.Empty;
 
@@ -187,9 +202,13 @@ namespace NArgs
 				{
 					valueString = " <value>";
 				}
+				else if (typeof(Enum).IsAssignableFrom(command.Value.PropertyType))
+				{
+					valueString = $" ({string.Join(" | ", Enum.GetNames(command.Value.PropertyType))})";
+				}
 
 				string listing = command.Key.ShortArg != null
-					? $"  -{command.Key.ShortArg}{valueString}, --{command.Key.LongArg}{valueString}"
+					? $"  -{command.Key.ShortArg}, --{command.Key.LongArg}{valueString}"
 					: $"  --{command.Key.LongArg}{valueString}";
 
 				const int listingWidth = 45;
@@ -205,28 +224,9 @@ namespace NArgs
 					builder.Append(listingWidthString);
 				}
 
-				int lineLength = 0;
-				int lastIndex = 0;
-				int currentIndex = 0;
-
-				while ((currentIndex = command.Key.Description.IndexOf(' ', currentIndex + 1)) != -1)
+				if (!string.IsNullOrEmpty(command.Key.Description))
 				{
-					if (currentIndex - lastIndex >= descriptionWidth)
-					{
-						var descriptionSubstring = command.Key.Description.Substring(lastIndex, lineLength);
-						builder.AppendLine(descriptionSubstring);
-						builder.Append(listingWidthString);
-
-						lastIndex += lineLength + 1;
-					}
-
-					lineLength = currentIndex - lastIndex;
-				}
-
-				if (lineLength > 0)
-				{
-					var remainingSubstring = command.Key.Description.Substring(lastIndex);
-					builder.AppendLine(remainingSubstring);
+					BuildArgumentDescription(builder, command.Key.Description, listingWidth, descriptionWidth);
 				}
 
 				builder.AppendLine();
@@ -235,6 +235,65 @@ namespace NArgs
 			builder.AppendLine();
 
 			return builder.ToString();
+		}
+
+		private static void BuildArgumentDescription(StringBuilder builder, string description, int listingWidth, int descriptionWidth)
+		{
+			int lineLength = 0;
+			int lineStartIndex = 0;
+			int lastValidLength = 0;
+
+			for (var index = 0; index < description.Length; index++)
+			{
+				char c = description[index];
+
+				void PrintLine()
+				{
+					var descriptionSubstring = description.Substring(lineStartIndex, lastValidLength);
+					builder.AppendLine(descriptionSubstring);
+					builder.Append(' ', listingWidth);
+
+					lineStartIndex = 1 + index - (lineLength - lastValidLength);
+					lineLength = 1 + index - lineStartIndex;
+					lastValidLength = lineLength;
+				}
+
+				if ((c == ' ' && lineLength >= descriptionWidth) | c == '\n')
+				{
+					bool printAgain = false;
+
+					if (c == '\n' && lineLength < descriptionWidth)
+						lastValidLength = lineLength;
+					else if (c == '\n')
+						printAgain = true;
+
+					PrintLine();
+
+					if (printAgain)
+					{
+						// This works and I'm not sure how.
+
+						lastValidLength--;
+						lineLength--;
+						PrintLine();
+						lastValidLength++;
+						lineLength++;
+					}
+					
+					continue;
+				}
+
+				if (c == ' ')
+					lastValidLength = lineLength;
+
+				lineLength++;
+			}
+
+			if (lineLength > 0)
+			{
+				var remainingSubstring = description.Substring(lineStartIndex);
+				builder.AppendLine(remainingSubstring);
+			}
 		}
 
 		private static Dictionary<CommandDefinitionAttribute, PropertyInfo> GetCommandProperties<T>()
@@ -267,6 +326,27 @@ namespace NArgs
 
 			value = default;
 			return false;
+		}
+
+		private static MethodInfo GenericTryParseMethodInfo = null;
+		private static bool TryParseEnum(Type enumType, string value, bool caseSensitive, out object val)
+		{
+			// Workaround for non-generic Enum.TryParse not being present below .NET 5
+
+			if (GenericTryParseMethodInfo == null)
+			{
+				GenericTryParseMethodInfo = typeof(Enum).GetMethods(BindingFlags.Public | BindingFlags.Static)
+					.First(x => x.Name == "TryParse" && x.GetGenericArguments().Length == 1 &&
+								x.GetParameters().Length == 3);
+			}
+
+			var objectArray = new object[] { value, caseSensitive, null };
+
+			var result = GenericTryParseMethodInfo.MakeGenericMethod(enumType)
+				.Invoke(null, objectArray);
+
+			val = objectArray[2];
+			return (bool)result;
 		}
 	}
 
@@ -302,6 +382,11 @@ namespace NArgs
 		/// The description of the option, to be used in the help text.
 		/// </summary>
 		public string Description { get; set; } = null;
+
+		/// <summary>
+		/// Used in ordering this command in the help list.
+		/// </summary>
+		public int Order { get; set; } = 0;
 
 		/// <param name="longArg">The long version of an option, e.g. "--append".</param>
 		public CommandDefinitionAttribute(string longArg)
