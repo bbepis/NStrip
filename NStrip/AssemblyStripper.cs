@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using Mono.Cecil;
 using Mono.Cecil.Cil;
 
@@ -103,11 +104,20 @@ namespace NStrip
 				assembly.MainModule.Resources.Clear();
 		}
 
-		public static void MakePublic(AssemblyDefinition assembly, IList<string> typeNameBlacklist)
+		public static void MakePublic(AssemblyDefinition assembly, IList<string> typeNameBlacklist, bool includeCompilerGenerated)
 		{
+			bool checkCompilerGeneratedAttribute(IMemberDefinition member)
+			{
+				return member.CustomAttributes.Any(x =>
+					x.AttributeType.FullName == "System.Runtime.CompilerServices.CompilerGeneratedAttribute");
+			}
+
 			foreach (var type in GetAllTypeDefinitions(assembly))
 			{
 				if (typeNameBlacklist.Contains(type.Name))
+					continue;
+
+				if (!includeCompilerGenerated && checkCompilerGeneratedAttribute(type))
 					continue;
 
 				if (type.IsNested)
@@ -116,10 +126,22 @@ namespace NStrip
 					type.IsPublic = true;
 
 				foreach (var method in type.Methods)
+				{
+					if (!includeCompilerGenerated &&
+					    (checkCompilerGeneratedAttribute(method) || method.IsCompilerControlled))
+						continue;
+
 					method.IsPublic = true;
+				}
 
 				foreach (var field in type.Fields)
+				{
+					if (!includeCompilerGenerated &&
+					    (checkCompilerGeneratedAttribute(field) || field.IsCompilerControlled))
+						continue;
+
 					field.IsPublic = true;
+				}
 			}
 		}
 	}

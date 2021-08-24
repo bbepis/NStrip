@@ -8,6 +8,9 @@ namespace NStrip
 {
 	class Program
 	{
+		internal const string LongVersion = "1.2.0.0";
+		internal const string ShortVersion = "1.2.0";
+
 		static void LogError(string message)
 		{
 			var oldColor = Console.ForegroundColor;
@@ -30,7 +33,7 @@ namespace NStrip
 			if (arguments.Values.Count == 0 || arguments.Help)
 			{
 				LogMessage(Arguments.PrintLongHelp<NStripArguments>(
-					"NStrip v1.1, by Bepis",
+					$"NStrip v{ShortVersion}, by Bepis",
 					"Usage: NStrip [options] (<.NET .exe / .dll> | <directory>) [<output assembly> | <output directory>]"));
 				return;
 			}
@@ -62,8 +65,7 @@ namespace NStrip
 					if (!arguments.Overwrite && outputPath == null)
 						fileOutputPath = AppendToEndOfFileName(file, "-nstrip");
 
-					StripAssembly(file, fileOutputPath, arguments.NoStrip, arguments.Public,
-						arguments.KeepResources, arguments.StripType,arguments.Blacklist, readerParams);
+					StripAssembly(file, fileOutputPath, arguments, readerParams);
 				}
 			}
 			else if (File.Exists(path))
@@ -73,8 +75,7 @@ namespace NStrip
 				string fileOutputPath = outputPath ??
 				                        (arguments.Overwrite ? path : AppendToEndOfFileName(path, "-nstrip"));
 
-				StripAssembly(path, fileOutputPath, arguments.NoStrip, arguments.Public,
-					arguments.KeepResources, arguments.StripType, arguments.Blacklist, readerParams);
+				StripAssembly(path, fileOutputPath, arguments, readerParams);
 			}
 			else
 			{
@@ -84,17 +85,17 @@ namespace NStrip
 			LogMessage("Finished!");
 		}
 
-		static void StripAssembly(string assemblyPath, string outputPath, bool noStrip, bool makePublic, bool keepResources, StripType stripType, IList<string> typeNameBlacklist, ReaderParameters readerParams)
+		static void StripAssembly(string assemblyPath, string outputPath, NStripArguments arguments, ReaderParameters readerParams)
 		{
 			LogMessage($"Stripping {assemblyPath}");
 			using var memoryStream = new MemoryStream(File.ReadAllBytes(assemblyPath));
 			using var assemblyDefinition = AssemblyDefinition.ReadAssembly(memoryStream, readerParams);
 
-			if (!noStrip)
-				AssemblyStripper.StripAssembly(assemblyDefinition, stripType, keepResources);
+			if (!arguments.NoStrip)
+				AssemblyStripper.StripAssembly(assemblyDefinition, arguments.StripType, arguments.KeepResources);
 
-			if (makePublic)
-				AssemblyStripper.MakePublic(assemblyDefinition, typeNameBlacklist);
+			if (arguments.Public)
+				AssemblyStripper.MakePublic(assemblyDefinition, arguments.Blacklist, arguments.IncludeCompilerGenerated);
 
 			// We write to a memory stream first to ensure that Mono.Cecil doesn't have any errors when producing the assembly.
 			// Otherwise, if we're overwriting the same assembly and it fails, it will overwrite with a 0 byte file
@@ -103,7 +104,7 @@ namespace NStrip
 
 			assemblyDefinition.Write(tempStream);
 
-			if (noStrip && !makePublic)
+			if (arguments.NoStrip && !arguments.Public)
 				return;
 
 			tempStream.Position = 0;
@@ -147,6 +148,9 @@ namespace NStrip
 
             [CommandDefinition("t", "strip-type", Description = "The type of stripping to perform.\n\nValueRet: Returns a dummy value and ret opcode. Largest but runtime-safe.\nOnlyRet: Only adds a ret opcode. Slightly smaller than ValueRet but may not be runtime-safe.\nEmptyBody: No opcodes in body. Slightly smaller again but is not runtime-safe.\nThrowNull: Makes all methods throw null. Runtime-safe and is the MS standard. Default.\nExtern: Marks all methods as extern, and removes their bodies. Smallest size, but not runtime-safe and might not be compile-time safe.")]
             public StripType StripType { get; set; }
+
+            [CommandDefinition("cg", "include-compiler-generated", Description = "When publicizing, also publicize compiler generated types and members. By default, this does not occur. Does nothing if not publicizing.")]
+            public bool IncludeCompilerGenerated { get; set; }
 		}
 	}
 }
