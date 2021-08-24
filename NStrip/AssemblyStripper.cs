@@ -104,7 +104,7 @@ namespace NStrip
 				assembly.MainModule.Resources.Clear();
 		}
 
-		public static void MakePublic(AssemblyDefinition assembly, IList<string> typeNameBlacklist, bool includeCompilerGenerated)
+		public static void MakePublic(AssemblyDefinition assembly, IList<string> typeNameBlacklist, bool includeCompilerGenerated, bool excludeCgEvents)
 		{
 			bool checkCompilerGeneratedAttribute(IMemberDefinition member)
 			{
@@ -139,6 +139,12 @@ namespace NStrip
 					if (!includeCompilerGenerated &&
 					    (checkCompilerGeneratedAttribute(field) || field.IsCompilerControlled))
 						continue;
+
+					if (includeCompilerGenerated && excludeCgEvents)
+					{
+						if (type.Events.Any(x => x.Name == field.Name))
+							continue;
+					}
 
 					field.IsPublic = true;
 				}

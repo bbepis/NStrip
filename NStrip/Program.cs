@@ -95,7 +95,7 @@ namespace NStrip
 				AssemblyStripper.StripAssembly(assemblyDefinition, arguments.StripType, arguments.KeepResources);
 
 			if (arguments.Public)
-				AssemblyStripper.MakePublic(assemblyDefinition, arguments.Blacklist, arguments.IncludeCompilerGenerated);
+				AssemblyStripper.MakePublic(assemblyDefinition, arguments.Blacklist, arguments.IncludeCompilerGenerated, arguments.ExcludeCompilerGeneratedEvents);
 
 			// We write to a memory stream first to ensure that Mono.Cecil doesn't have any errors when producing the assembly.
 			// Otherwise, if we're overwriting the same assembly and it fails, it will overwrite with a 0 byte file
@@ -149,8 +149,11 @@ namespace NStrip
             [CommandDefinition("t", "strip-type", Description = "The type of stripping to perform.\n\nValueRet: Returns a dummy value and ret opcode. Largest but runtime-safe.\nOnlyRet: Only adds a ret opcode. Slightly smaller than ValueRet but may not be runtime-safe.\nEmptyBody: No opcodes in body. Slightly smaller again but is not runtime-safe.\nThrowNull: Makes all methods throw null. Runtime-safe and is the MS standard. Default.\nExtern: Marks all methods as extern, and removes their bodies. Smallest size, but not runtime-safe and might not be compile-time safe.")]
             public StripType StripType { get; set; }
 
-            [CommandDefinition("cg", "include-compiler-generated", Description = "When publicizing, also publicize compiler generated types and members. By default, this does not occur. Does nothing if not publicizing.")]
+            [CommandDefinition("cg", "include-compiler-generated", Description = "When publicizing, also publicize compiler generated types and members. By default, this does not occur. Does nothing if not publicizing.", Order = -1)]
             public bool IncludeCompilerGenerated { get; set; }
+
+            [CommandDefinition("cg-exclude-events", Description = "To be used in conjunction with -cg. Will not publicize fields that are used to back auto-generated events.", Order = -1)]
+            public bool ExcludeCompilerGeneratedEvents { get; set; }
 		}
 	}
 }
