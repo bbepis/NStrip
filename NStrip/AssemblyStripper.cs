@@ -87,10 +87,7 @@ namespace NStrip
 
 		public static void StripAssembly(AssemblyDefinition assembly, StripType stripType, bool keepResources)
 		{
-			if (!assembly.MainModule.TryGetTypeReference("System.Void", out var voidTypeReference))
-			{
-				voidTypeReference = assembly.MainModule.ImportReference(typeof(void));
-			}
+			var voidTypeReference = assembly.MainModule.TypeSystem.Void;
 
 			foreach (TypeDefinition type in GetAllTypeDefinitions(assembly))
 			{
