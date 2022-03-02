@@ -88,6 +88,8 @@ namespace NStrip
 		static void StripAssembly(string assemblyPath, string outputPath, NStripArguments arguments, ReaderParameters readerParams)
 		{
 			LogMessage($"Stripping {assemblyPath}");
+			try{
+
 			using var memoryStream = new MemoryStream(File.ReadAllBytes(assemblyPath));
 			using var assemblyDefinition = AssemblyDefinition.ReadAssembly(memoryStream, readerParams);
 
@@ -110,7 +112,12 @@ namespace NStrip
 			tempStream.Position = 0;
 			using var outputStream = File.Open(outputPath, FileMode.Create);
 
-			tempStream.CopyTo(outputStream);
+			tempStream.CopyTo(outputStream); 
+			}
+			catch (Exception ex)
+            {
+				LogError(ex.ToString());
+            }
 		}
 
 		static string AppendToEndOfFileName(string path, string appendedString)
