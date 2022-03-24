@@ -114,7 +114,10 @@ namespace NStrip
 			{
 				var scope = assembly.MainModule.AssemblyReferences.OrderByDescending(a => a.Version).FirstOrDefault(a => a.Name == "mscorlib");
 				var attributeType = new TypeReference("System", "NonSerializedAttribute", assembly.MainModule, scope);
-				nonSerialized = new MethodReference(".ctor", assembly.MainModule.TypeSystem.Void, attributeType);
+				nonSerialized = new MethodReference(".ctor", assembly.MainModule.TypeSystem.Void, attributeType)
+				{
+					HasThis = true,
+				};
 			}
 
 			foreach (var type in GetAllTypeDefinitions(assembly))
