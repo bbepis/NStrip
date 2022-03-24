@@ -95,7 +95,7 @@ namespace NStrip
 				AssemblyStripper.StripAssembly(assemblyDefinition, arguments.StripType, arguments.KeepResources);
 
 			if (arguments.Public)
-				AssemblyStripper.MakePublic(assemblyDefinition, arguments.Blacklist, arguments.IncludeCompilerGenerated, arguments.ExcludeCompilerGeneratedEvents);
+				AssemblyStripper.MakePublic(assemblyDefinition, arguments.Blacklist, arguments.IncludeCompilerGenerated, arguments.ExcludeCompilerGeneratedEvents, arguments.Unity);
 
 			// We write to a memory stream first to ensure that Mono.Cecil doesn't have any errors when producing the assembly.
 			// Otherwise, if we're overwriting the same assembly and it fails, it will overwrite with a 0 byte file
@@ -154,6 +154,9 @@ namespace NStrip
 
             [CommandDefinition("cg-exclude-events", Description = "To be used in conjunction with -cg. Will not publicize fields that are used to back auto-generated events.", Order = -1)]
             public bool ExcludeCompilerGeneratedEvents { get; set; }
+
+			[CommandDefinition("u", "unity", Description = "In case you want publicized assembly for use inside Unity editor")]
+			public bool Unity { get; set; }
 		}
 	}
 }
