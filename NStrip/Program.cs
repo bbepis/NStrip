@@ -113,7 +113,7 @@ namespace NStrip
 					AssemblyStripper.StripAssembly(assemblyDefinition, arguments.StripType, arguments.KeepResources);
 
 				if (arguments.Public)
-					AssemblyStripper.MakePublic(assemblyDefinition, arguments.Blacklist, arguments.IncludeCompilerGenerated, arguments.ExcludeCompilerGeneratedEvents);
+					AssemblyStripper.MakePublic(assemblyDefinition, arguments.Blacklist, arguments.IncludeCompilerGenerated, arguments.ExcludeCompilerGeneratedEvents, arguments.RemoveReadOnlyAttribute);
 
 				// We write to a memory stream first to ensure that Mono.Cecil doesn't have any errors when producing the assembly.
 				// Otherwise, if we're overwriting the same assembly and it fails, it will overwrite with a 0 byte file
@@ -179,6 +179,9 @@ namespace NStrip
 
             [CommandDefinition("cg-exclude-events", Description = "To be used in conjunction with -cg. Will not publicize fields that are used to back auto-generated events.", Order = -1)]
             public bool ExcludeCompilerGeneratedEvents { get; set; }
+
+			[CommandDefinition("remove-readonly", Description = "Remove the readonly attribute from fields. Only works with the mono runtime.", Order = -1)]
+			public bool RemoveReadOnlyAttribute { get; set; }
 		}
 	}
 }
