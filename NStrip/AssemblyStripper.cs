@@ -101,7 +101,7 @@ namespace NStrip
 				assembly.MainModule.Resources.Clear();
 		}
 
-		public static void MakePublic(AssemblyDefinition assembly, IList<string> typeNameBlacklist, bool includeCompilerGenerated, bool excludeCgEvents, bool unity)
+		public static void MakePublic(AssemblyDefinition assembly, IList<string> typeNameBlacklist, bool includeCompilerGenerated, bool excludeCgEvents, bool removeReadOnly, bool unity)
 		{
 			bool checkCompilerGeneratedAttribute(IMemberDefinition member)
 			{
@@ -161,6 +161,9 @@ namespace NStrip
 					}
 
 					field.IsPublic = true;
+
+					if (removeReadOnly)
+						field.IsInitOnly = false;
 				}
 			}
 		}

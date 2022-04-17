@@ -19,6 +19,7 @@ The general usage of NStrip is `NStrip [options] <input> (<output>)`. Input and 
   - `OnlyRet`: Only adds a ret opcode. Slightly smaller than ValueRet but may not be runtime-safe.
   - `EmptyBody`: No opcodes in body. Slightly smaller again but is not runtime-safe.
   - `Extern`: Marks all methods as extern, and removes their bodies. Smallest size, but not runtime-safe and might not be compile-time safe.
+- `-remove-readonly` removes the readonly attribute from fields. Only works with the mono runtime.
 
 ## Credits
 Uses NArgs from https://github.com/bbepis/NArgs
