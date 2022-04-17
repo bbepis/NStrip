@@ -8,8 +8,8 @@ namespace NStrip
 {
 	class Program
 	{
-		internal const string LongVersion = "1.3.0.0";
-		internal const string ShortVersion = "1.3.0";
+		internal const string ShortVersion = "1.4.0";
+		internal const string LongVersion = ShortVersion + ".0";
 
 		static void LogError(string message)
 		{
