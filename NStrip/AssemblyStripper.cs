@@ -101,12 +101,23 @@ namespace NStrip
 				assembly.MainModule.Resources.Clear();
 		}
 
-		public static void MakePublic(AssemblyDefinition assembly, IList<string> typeNameBlacklist, bool includeCompilerGenerated, bool excludeCgEvents, bool removeReadOnly)
+		public static void MakePublic(AssemblyDefinition assembly, IList<string> typeNameBlacklist, bool includeCompilerGenerated, bool excludeCgEvents, bool removeReadOnly, bool unity)
 		{
 			bool checkCompilerGeneratedAttribute(IMemberDefinition member)
 			{
 				return member.CustomAttributes.Any(x =>
 					x.AttributeType.FullName == "System.Runtime.CompilerServices.CompilerGeneratedAttribute");
+			}
+
+			MethodReference nonSerialized = null;
+			if (unity)
+			{
+				var scope = assembly.MainModule.AssemblyReferences.OrderByDescending(a => a.Version).FirstOrDefault(a => a.Name == "mscorlib");
+				var attributeType = new TypeReference("System", "NonSerializedAttribute", assembly.MainModule, scope);
+				nonSerialized = new MethodReference(".ctor", assembly.MainModule.TypeSystem.Void, attributeType)
+				{
+					HasThis = true,
+				};
 			}
 
 			foreach (var type in GetAllTypeDefinitions(assembly))
@@ -141,6 +152,12 @@ namespace NStrip
 					{
 						if (type.Events.Any(x => x.Name == field.Name))
 							continue;
+					}
+
+					if (nonSerialized != null && !field.IsPublic && !field.CustomAttributes.Any(a => a.AttributeType.FullName == "UnityEngine.SerializeField"))
+					{
+						field.IsNotSerialized = true;
+						field.CustomAttributes.Add(new CustomAttribute(nonSerialized));
 					}
 
 					field.IsPublic = true;
