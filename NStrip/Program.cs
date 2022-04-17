@@ -55,6 +55,8 @@ namespace NStrip
 			if (Directory.Exists(path))
 			{
 				resolver.AddSearchDirectory(path);
+				bool completedWithoutError = true;
+				List<string> failedFiles = new List<string>();
 
 				foreach (var file in Directory.EnumerateFiles(path, "*.dll"))
 				{
@@ -65,8 +67,18 @@ namespace NStrip
 					if (!arguments.Overwrite && outputPath == null)
 						fileOutputPath = AppendToEndOfFileName(file, "-nstrip");
 
-					StripAssembly(file, fileOutputPath, arguments, readerParams);
+
+					if(StripAssembly(file, fileOutputPath, arguments, readerParams))
+						continue;
+
+					completedWithoutError = false;
+					failedFiles.Add(fileOutputPath);
 				}
+				if (!completedWithoutError)
+                {
+					LogError("Some files failed to process!");
+					LogError($"FailedFiles:\n {string.Join("\n", failedFiles)}");
+                }
 			}
 			else if (File.Exists(path))
 			{
@@ -75,7 +87,10 @@ namespace NStrip
 				string fileOutputPath = outputPath ??
 				                        (arguments.Overwrite ? path : AppendToEndOfFileName(path, "-nstrip"));
 
-				StripAssembly(path, fileOutputPath, arguments, readerParams);
+				if(!StripAssembly(path, fileOutputPath, arguments, readerParams))
+                {
+					throw new Exception($"Failed to process {path} when it was the only file needing it!");
+                }
 			}
 			else
 			{
@@ -85,32 +100,42 @@ namespace NStrip
 			LogMessage("Finished!");
 		}
 
-		static void StripAssembly(string assemblyPath, string outputPath, NStripArguments arguments, ReaderParameters readerParams)
+		static bool StripAssembly(string assemblyPath, string outputPath, NStripArguments arguments, ReaderParameters readerParams)
 		{
 			LogMessage($"Stripping {assemblyPath}");
-			using var memoryStream = new MemoryStream(File.ReadAllBytes(assemblyPath));
-			using var assemblyDefinition = AssemblyDefinition.ReadAssembly(memoryStream, readerParams);
+			try
+			{
 
-			if (!arguments.NoStrip)
-				AssemblyStripper.StripAssembly(assemblyDefinition, arguments.StripType, arguments.KeepResources);
+				using var memoryStream = new MemoryStream(File.ReadAllBytes(assemblyPath));
+				using var assemblyDefinition = AssemblyDefinition.ReadAssembly(memoryStream, readerParams);
 
-			if (arguments.Public)
-				AssemblyStripper.MakePublic(assemblyDefinition, arguments.Blacklist, arguments.IncludeCompilerGenerated, arguments.ExcludeCompilerGeneratedEvents, arguments.RemoveReadOnlyAttribute);
+				if (!arguments.NoStrip)
+					AssemblyStripper.StripAssembly(assemblyDefinition, arguments.StripType, arguments.KeepResources);
 
-			// We write to a memory stream first to ensure that Mono.Cecil doesn't have any errors when producing the assembly.
-			// Otherwise, if we're overwriting the same assembly and it fails, it will overwrite with a 0 byte file
+				if (arguments.Public)
+					AssemblyStripper.MakePublic(assemblyDefinition, arguments.Blacklist, arguments.IncludeCompilerGenerated, arguments.ExcludeCompilerGeneratedEvents, arguments.RemoveReadOnlyAttribute);
 
-			using var tempStream = new MemoryStream();
+				// We write to a memory stream first to ensure that Mono.Cecil doesn't have any errors when producing the assembly.
+				// Otherwise, if we're overwriting the same assembly and it fails, it will overwrite with a 0 byte file
 
-			assemblyDefinition.Write(tempStream);
+				using var tempStream = new MemoryStream();
 
-			if (arguments.NoStrip && !arguments.Public)
-				return;
+				assemblyDefinition.Write(tempStream);
 
-			tempStream.Position = 0;
-			using var outputStream = File.Open(outputPath, FileMode.Create);
+				if (arguments.NoStrip && !arguments.Public)
+					return true;;
 
-			tempStream.CopyTo(outputStream);
+				tempStream.Position = 0;
+				using var outputStream = File.Open(outputPath, FileMode.Create);
+
+				tempStream.CopyTo(outputStream);
+				return true;
+			}
+			catch (Exception ex)
+            {
+				LogError($"Failed to strip assembly {assemblyPath}: \n{ex}");
+				return false;
+            }
 		}
 
 		static string AppendToEndOfFileName(string path, string appendedString)
