@@ -1,0 +1,37 @@
+on: push
+name: Build & Release
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@master
+    - name: Setup dotnet
+      uses: actions/setup-dotnet@master
+      with:
+        dotnet-version: '6.0.x'
+        include-prerelease: true
+    - name: Build
+      shell: bash
+      run: |
+        chmod 755 release.sh
+        ./release.sh
+    - name: Release Latest
+      uses: marvinpinto/action-automatic-releases@latest
+      if: github.ref == 'refs/heads/master'
+      with:
+        repo_token: "${{ secrets.GITHUB_TOKEN }}"
+        automatic_release_tag: "latest"
+        title: "Latest"
+        prerelease: true
+        files: |
+          publish/*.zip
+    - name: Release stable
+      uses: softprops/action-gh-release@master
+      if: startsWith(github.ref, 'refs/tags')
+      with:
+        draft: true
+        prerelease: false
+        files: |
+          publish/*.zip
