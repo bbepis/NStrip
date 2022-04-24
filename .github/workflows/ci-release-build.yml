@@ -23,17 +23,7 @@ jobs:
       with:
         name: NStrip
         path: publish/NStrip.exe
-    - name: Release Latest
-      uses: marvinpinto/action-automatic-releases@latest
-      if: github.ref == 'refs/heads/master'
-      with:
-        repo_token: "${{ secrets.GITHUB_TOKEN }}"
-        automatic_release_tag: "latest"
-        title: "Latest"
-        prerelease: true
-        files: |
-          publish/NStrip.exe
-    - name: Release stable
+    - name: Release
       uses: softprops/action-gh-release@master
       if: startsWith(github.ref, 'refs/tags')
       with:
