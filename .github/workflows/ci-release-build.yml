@@ -1,0 +1,33 @@
+on: push
+name: Build & Release
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@master
+    - name: Setup dotnet
+      uses: actions/setup-dotnet@master
+      with:
+        dotnet-version: '6.0.x'
+        include-prerelease: true
+    - name: Build
+      shell: bash
+      run: |
+        dotnet build NStrip -c Release
+        mkdir -p publish
+        cp -a NStrip/bin/Release/*/NStrip.exe publish/
+    - name: Upload
+      uses: actions/upload-artifact@master
+      with:
+        name: NStrip
+        path: publish/NStrip.exe
+    - name: Release
+      uses: softprops/action-gh-release@master
+      if: startsWith(github.ref, 'refs/tags')
+      with:
+        draft: true
+        prerelease: false
+        files: |
+          publish/NStrip.exe
