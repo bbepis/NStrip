@@ -18,6 +18,11 @@ jobs:
         dotnet build NStrip -c Release
         mkdir -p publish
         cp -a NStrip/bin/Release/*/NStrip.exe publish/
+    - name: Upload
+      uses: actions/upload-artifact@master
+      with:
+        name: NStrip
+        path: publish/NStrip.exe
     - name: Release Latest
       uses: marvinpinto/action-automatic-releases@latest
       if: github.ref == 'refs/heads/master'
