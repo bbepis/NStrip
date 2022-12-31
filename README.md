@@ -1,6 +1,8 @@
 # NStrip
 .NET Assembly stripper, publicizer and general utility tool
 
+Note: This is less maintained than the BepInEx stripping tool available here: https://github.com/BepInEx/BepInEx.AssemblyPublicizer
+
 ## Usage
 The general usage of NStrip is `NStrip [options] <input> (<output>)`. Input and output can be a file or a folder, but they have to match. Output is optional.
 
